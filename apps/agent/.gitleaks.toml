@@ -1,0 +1,20 @@
+# Luna — Gitleaks Configuration
+# Custom patterns for Luna-specific secrets.
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+#
+# Backported from Sigil's .gitleaks.toml pattern.
+
+title = "Luna — Personal Event Agent"
+
+[extend]
+useDefault = true
+
+[allowlist]
+  paths = [
+    ".env.example",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "**/*.png",
+    "**/*.jpg",
+    "**/*.svg",
+  ]

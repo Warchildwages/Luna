@@ -1,182 +1,87 @@
-# Luna 🌙
+# Luna 🌙 — Your Personal Event Agent
 
-**Your personal event agent. Powered by AllFans. Settled on Casper.**
+Autonomous event ticketing agent powered by AllFans. Discover events, buy tickets, transfer, check in, create events, manage gigs, and more — all via x402 micropayments on Casper.
 
-Luna is an autonomous AI agent that discovers, purchases, transfers, and manages event tickets on behalf of humans and other agents — all via x402 micropayments on the Casper Network.
+## Buildathon: Casper x402 + AllFans
 
-Tell your agent what you want tonight — tickets, merch, drinks, plans — and Luna handles everything.
+Luna is a submission for the **Casper x402 Buildathon** (July 2026). She demonstrates:
 
----
-
-## Submission — Casper Agentic Buildathon 2026
-
-| Detail | Value |
-|--------|-------|
-| **Track** | Casper Innovation Track |
-| **Category** | Agent-to-Agent Service Marketplace (x402-powered) |
-| **Prize target** | $30K cash + $100K x402 ecosystem credits |
-| **Submission deadline** | July 7, 2026 |
+- **x402 micropayments** — Pay per operation, no subscription, no pre-funding
+- **Ed25519 cryptographic verification** — Real signature verification via tweetnacl
+- **Cross-chain identity** — Dual-key attestation linking Casper Ed25519 key → Base EVM address
+- **did:nostr** — W3C Decentralized Identifier (v0.1.0, early adopter)
+- **ERC-8004** — EVM agent identity registry
+- **17 operations** — Full event lifecycle: buyer, creator, venue, social, secondary market
 
 ## Quick Start
 
 ```bash
-# Clone
-git clone https://github.com/Warchildwages/Luna
-cd Luna
-
-# Install
+# Install dependencies
 npm install
 
-# Configure (dev mode — no blockchain needed)
+# Copy and configure env
 cp .env.example .env
-# ALLFANS_MOCK_MODE=true is set by default
+# Edit .env with your keys
 
-# Run
-npm run dev
-# Luna is now running at http://localhost:3002
+# Run in dev mode (mock AllFans API — no external deps needed)
+ALLFANS_MOCK_MODE=true npm run dev
+
+# Run tests
+npm test
 ```
+
+## Environment Variables
+
+See `.env.example` for all required vars. Key ones:
+
+| Variable | Purpose |
+|----------|---------|
+| `LUNA_EVM_PRIVATE_KEY` | EVM wallet for ERC-8004 registration |
+| `ERC8004_IDENTITY_REGISTRY` | ERC-8004 contract on Base Sepolia |
+| `LUNA_CASPER_WALLET_ADDRESS` | Casper wallet for receiving payments |
+| `CSPR_CLOUD_API_KEY` | Casper x402 facilitator API key |
+| `CASPER_MCP_SERVER_URL` | MCP server for agent discovery |
+| `VENICE_API_KEY` | LLM for NLU engine |
+| `ALLFANS_API_URL` | AllFans backend URL |
+| `ALLFANS_MOCK_MODE` | `true` to use mock data (no AllFans needed) |
+
+## Operations (17)
+
+| Category | Operations |
+|:---------|:-----------|
+| 🎟️ Ticket Buyer | discover, buy, transfer, check_in, rsvp, marketplace |
+| 🏟️ Creator/Venue | create_event, manage_gig, manage_capacity, set_pricing, venue_analytics, process_payout |
+| 🍺 Experience | lookup_contact, pre_verify, buy_merch |
+| 🏷️ Secondary | list_for_sale, cancel_listing |
+
+## Chat Interface
+
+Luna accepts natural language requests at `/api/chat`:
+
+```bash
+curl -X POST http://localhost:3002/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Find me live music this weekend and buy 2 tickets"}'
+```
+
+Returns an operation plan with pricing. Each operation is executed via its x402 endpoint.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    AGENT LAYER (Casper)                   │
-│                                                          │
-│  MCP Service Discovery  ←  Luna registered as luna-v1    │
-│  x402 Facilitator       ←  Payment settlement            │
-│  Agent Identity         ←  ERC-8004 on Base (planned)    │
-│                                                          │
-└──────────────────────┬───────────────────────────────────┘
-                       │   API calls
-                       ▼
-┌──────────────────────────────────────────────────────────┐
-│                    LUNA AGENT BACKEND                     │
-│                                                          │
-│  /api/x402/buy         → withX402Payment middleware       │
-│  /api/x402/transfer    → withX402Payment middleware       │
-│  /api/x402/check-in    → withX402Payment middleware       │
-│  /api/x402/marketplace → withX402Payment middleware       │
-│  /api/x402/discover    → Free (no payment)               │
-│  /api/x402/rsvp        → Free (no payment)               │
-│  /api/agent/status     → Live metrics + wallet            │
-│                                                          │
-└──────────────────────┬───────────────────────────────────┘
-                       │   x402 payment → settle on Casper
-                       │   ticket operations → AllFans on Base
-                       ▼
-┌──────────────────────────────────────────────────────────┐
-│                    SETTLEMENT LAYER                       │
-│                                                          │
-│  Casper (payment)   → CSPR.cloud x402 Facilitator        │
-│  Base (execution)   → AllFans ticket contracts           │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+User → /api/chat → NLU Engine (Venice) → Executor → AllFans API / x402 Routes
+                                                          ↓
+                                               Cross-Chain Identity
+                                               did:nostr · ERC-8004
 ```
 
-## x402 Payment Flow
+- **NLU**: Venice AI (privacy-first, no data retention)
+- **Payments**: x402 on Casper (Ed25519 sig verify via tweetnacl)
+- **Identity**: Casper Ed25519 ↔ Base EVM via dual-key attestation
+- **Discovery**: ERC-8004 (EVM) + MCP (Casper) + did:nostr (universal)
 
-```
-Calling Agent                    Luna                         Casper
-     │                            │                             │
-     │  POST /api/x402/buy        │                             │
-     │  (no PAYMENT-SIGNATURE)    │                             │
-     │───────────────────────────→│                             │
-     │  402 Payment Required      │                             │
-     │←───────────────────────────│                             │
-     │                            │                             │
-     │  (Agent signs              │                             │
-     │   ExactCasperPayload       │                             │
-     │   using Casper wallet)     │                             │
-     │                            │                             │
-     │  POST /api/x402/buy        │                             │
-     │  + PAYMENT-SIGNATURE       │                             │
-     │───────────────────────────→│                             │
-     │                            │  Verify via SDK types       │
-     │                            │  ├── isValidAddress()       │
-     │                            │  ├── parseAmount()          │
-     │                            │  └── expiration check       │
-     │                            │                             │
-     │                            │  POST /settle               │
-     │                            │───────────────────────────→│
-     │                            │  CEP-18 transfer settles    │
-     │                            │←───────────────────────────│
-     │                            │                             │
-     │  { tickets, _payment }     │                             │
-     │←───────────────────────────│                             │
-```
+## Links
 
-## API Endpoints
-
-### Paid Operations (require x402 PAYMENT-SIGNATURE header)
-
-| Endpoint | Price | Description |
-|----------|:-----:|-------------|
-| `POST /api/x402/buy` | $0.01 | Purchase event tickets |
-| `POST /api/x402/transfer` | $0.01 | Transfer ticket to another wallet |
-| `POST /api/x402/check-in` | $0.005 | Check into event with on-chain proof |
-| `GET /api/x402/marketplace` | $0.01 | Browse and purchase resale tickets |
-
-### Free Operations
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/x402/discover` | Search events by query, date, city, category |
-| `POST /api/x402/rsvp` | RSVP to an event |
-
-### Agent Discovery
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/x402/service-info` | MCP service discovery metadata |
-| `GET /api/agent/status` | Live agent status with wallet, metrics, uptime |
-| `GET /api/x402/swarm` | Multi-agent ecosystem discovery |
-
-## Idempotency
-
-Agents can safely retry by including an `X-Idempotency-Key` header. Luna returns the cached result from the first successful attempt — no double-settlements.
-
-## Dev Mode
-
-Set `ALLFANS_MOCK_MODE=true` in `.env` to run Luna with mock event data. No AllFans backend or Casper wallet required for development.
-
-```bash
-# Quick demo of the full 402 flow
-curl -s http://localhost:3002/api/x402/demo | python -m json.tool
-
-# Trigger a 402 response
-curl -s -X POST http://localhost:3002/api/x402/buy \
-  -H "Content-Type: application/json" \
-  -d '{"eventId":"evt-001","quantity":2}'
-
-# Simulate a successful purchase
-curl -s -X POST http://localhost:3002/api/x402/demo \
-  -H "PAYMENT-SIGNATURE: signed-payload" \
-  -H "Content-Type: application/json" \
-  -d '{"action":"buy"}'
-```
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Backend | Next.js 14 (App Router) |
-| Payment protocol | x402 via CSPR.cloud Facilitator |
-| Settlement chain | Casper Testnet (`casper:casper-test`) |
-| Execution chain | Base Sepolia (via AllFans) |
-| Validation | Custom ExactCasperPayload parser |
-| Standards | x402, MCP, ERC-8004 (planned) |
-| Idempotency | In-memory key store |
-| Metrics | In-memory operation counters |
-
-## Acknowledgments
-
-Built for the **Casper Agentic Buildathon 2026**.
-
-- [Casper Network](https://casper.network/) — Agent economy L1 with x402 Facilitator
-- [CSPR.cloud](https://cspr.cloud/) — x402 Facilitator API
-- [AllFans](https://allfans.io/) — Event ticketing platform on Base
-- [@make-software/casper-x402](https://github.com/make-software/casper-x402) — Reference x402 implementation
-
-## License
-
-MIT
+- GitHub: https://github.com/Warchildwages/Luna
+- AllFans: https://allfans-k2sw.onrender.com
+- Signet/Sigil: https://signet.ventures

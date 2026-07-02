@@ -4,3 +4,10 @@ dist/
 .env
 .env.local
 *.pem
+tsconfig.tsbuildinfo
+package-lock.json
+
+# Internal audit artifacts (never pushed)
+*PERSONAFORGE-REPORT*
+*EVALUATION.md
+MUST-DO.md

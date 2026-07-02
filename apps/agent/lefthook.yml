@@ -1,0 +1,28 @@
+# Luna — Lefthook Pre-Commit Configuration
+# Backported from Sigil's lefthook pattern.
+# Install: npx lefthook install
+# Run manually: npx lefthook run pre-commit
+
+pre-commit:
+  parallel: true
+  commands:
+    # 1. Secrets scan — blocks commit if secrets found
+    gitleaks:
+      run: npx gitleaks detect --source . --no-git --config-path .gitleaks.toml --exit-code 1
+      skip:
+        - merge
+        - rebase
+      stage_fixed: false
+
+    # 2. Format check — auto-fixes formatting
+    biome-format:
+      glob: "*.{js,ts,tsx,jsx,json,md,css}"
+      run: npx @biomejs/biome check --write {staged_files}
+      stage_fixed: true
+
+    # 3. Type check
+    typecheck:
+      run: npx tsc --noEmit
+      skip:
+        - merge
+        - rebase
