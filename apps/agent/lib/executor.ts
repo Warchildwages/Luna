@@ -140,7 +140,7 @@ const HANDLERS: Record<LunaOperation, OperationHandler> = {
   },
 
   venue_analytics: async (params) => {
-    const { isMockMode } = await import('./dev-mode');
+    const { isMockMode } = await import('@luna/blockchain');
     if (isMockMode()) {
       return {
         eventId: params.eventId as string,

@@ -9,8 +9,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { buildLunaDidDocument } from '@/lib/did-nostr';
-import { LUNA_CASPER_WALLET } from '@/lib/x402-casper';
+import { buildLunaDidDocument } from '@luna/blockchain';
+import { LUNA_CASPER_WALLET } from '@luna/blockchain';
 
 /**
  * Derive a 64-char hex public key from the Casper wallet address.

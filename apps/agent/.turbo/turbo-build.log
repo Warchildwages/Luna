@@ -1,0 +1,23 @@
+
+> @luna/agent@0.1.0 build C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./lib/allfans-api.ts:144:5
+Type error: Property 'success' is missing in type '{ tickets: { id: string; eventName: string; date: string; venue: string; tier: string; price: number; }[]; payment: { amount: string; chain: string; transactionHash: string; }; }' but required in type 'BuyTicketResponse'.
+
+[0m [90m 142 |[39m   [90m// Dev mode — return mock tickets[39m[0m
+[0m [90m 143 |[39m   [36mif[39m (isMockMode()) {[0m
+[0m[31m[1m>[22m[39m[90m 144 |[39m     [36mreturn[39m mockBuyTickets(userWallet)[33m;[39m[0m
+[0m [90m     |[39m     [31m[1m^[22m[39m[0m
+[0m [90m 145 |[39m   }[0m
+[0m [90m 146 |[39m[0m
+[0m [90m 147 |[39m   [36mconst[39m res [33m=[39m [36mawait[39m fetchWithRetry([32m`${ALLFANS_API_URL}/api/tickets/buy`[39m[33m,[39m {[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.

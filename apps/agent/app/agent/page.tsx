@@ -278,18 +278,18 @@ export default function AgentPage() {
           )}
           {chatResult && (
             <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
-              <p className="text-sm text-slate-300">{chatResult.summary}</p>
-              {chatResult.nlu?.plan && chatResult.nlu.plan.length > 0 && (
+              <p className="text-sm text-slate-300">{chatResult.summary as string}</p>
+              {((chatResult.nlu || {}) as { plan?: Array<Record<string, unknown>> }).plan?.length ? (
                 <div className="mt-2 space-y-1">
                   <p className="text-[11px] font-medium text-slate-500">Plan</p>
-                  {chatResult.nlu.plan.map((step: {operation:string,naturalLanguage:string}, i:number) => (
+                  {((chatResult.nlu || {}) as { plan: Array<{operation:string;naturalLanguage:string}> }).plan.map((step, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
                       <span className="rounded bg-indigo-500/10 px-1.5 py-0.5 text-[11px] text-indigo-300">{step.operation}</span>
                       <span>{step.naturalLanguage}</span>
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </div>

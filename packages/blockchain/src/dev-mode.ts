@@ -94,24 +94,26 @@ export function mockDiscoverEvents(): unknown[] {
 export function mockBuyTickets(userWallet: string): {
   tickets: Array<{ id: string; eventName: string; date: string; venue: string; tier: string; price: number }>;
   payment: { amount: string; chain: string; transactionHash: string };
+  success: boolean;
 } {
   return {
-    tickets: [
-      {
-        id: `tkt_${Date.now().toString(36)}`,
-        eventName: 'Live Music at Riverside Park',
-        date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-        venue: 'Riverside Park Amphitheater',
-        tier: 'General Admission',
-        price: 25,
-      },
-    ],
-    payment: {
-      amount: '0.01',
-      chain: 'casper:casper-test',
-      transactionHash: `0x${Date.now().toString(16).padStart(64, '0')}`,
+  tickets: [
+    {
+      id: `tkt_${Date.now().toString(36)}`,
+      eventName: 'Live Music at Riverside Park',
+      date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      venue: 'Riverside Park Amphitheater',
+      tier: 'General Admission',
+      price: 25,
     },
-  };
+  ],
+  payment: {
+    amount: '0.01',
+    chain: 'casper:casper-test',
+    transactionHash: `0x${Date.now().toString(16).padStart(64, '0')}`,
+  },
+  success: true,
+};
 }
 
 export function mockTransferTicket(): { success: boolean; transactionHash?: string } {

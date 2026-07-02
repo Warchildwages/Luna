@@ -8,9 +8,8 @@ services:
     runtime: node
     repo: https://github.com/Warchildwages/Luna
     branch: main
-    rootDir: apps/agent
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: npm install -g pnpm && pnpm install && pnpm build
+    startCommand: cd apps/agent && node .next/standalone/apps/agent/server.js
     envVars:
       - key: NODE_ENV
         value: production

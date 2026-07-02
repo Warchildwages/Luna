@@ -3,7 +3,7 @@
 // Tracks real-time operation metrics for the /api/agent/status endpoint.
 // Thread-safe in-memory counters. Production swaps to Redis/Prometheus.
 
-import { LUNA_OPERATIONS } from './luna-types';
+import { LUNA_OPERATIONS } from '@luna/shared';
 
 interface OperationMetric {
   totalCalls: number;

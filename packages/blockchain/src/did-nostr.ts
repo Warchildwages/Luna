@@ -12,9 +12,9 @@
 // Early adopter of did:nostr spec v0.1.0 (W3C Nostr CG, Jun 30 2026)
 // https://github.com/nostrcg/did-nostr
 
-import { LUNA_CASPER_WALLET, CASPER_NETWORK } from './x402-casper';
-import { LUNA_PRICING } from './luna-types';
-import type { LunaOperation } from './luna-types';
+import { LUNA_CASPER_WALLET, CASPER_NETWORK } from './x402';
+import { LUNA_PRICING } from '@luna/shared';
+import type { LunaOperation } from '@luna/shared';
 
 // ---------------------------------------------------------------------------
 // Configuration
