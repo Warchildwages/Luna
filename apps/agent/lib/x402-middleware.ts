@@ -1,19 +1,26 @@
-// 🏴 Pireph (June 30, 2026) — x402 Middleware
-//
-// Shared middleware pattern for all Luna paid (x402) routes.
-// Handles: payment verification → idempotency → execution → settlement → metrics.
-//
-// Usage:
-//   export const POST = withX402Payment('buy', 0.01, async (request, context) => {
-//     // Return data or throw errors — middleware handles the Response wrapping
-//     const result = await doSomething(request);
-//     return result;
-//   });
+/**
+ * 🏴 Pireph (July 6, 2026) — Multi-Chain x402 Middleware
+ *
+ * Shared middleware pattern for all Luna paid (x402) routes.
+ * Supports both Casper PAYMENT-SIGNATURE and Circle x-402-* protocols.
+ *
+ * Handles: protocol detection → payment verification → idempotency → execution → settlement → metrics.
+ *
+ * Usage:
+ *   export const POST = withX402Payment('buy', 0.01, async (request, context) => {
+ *     const result = await doSomething(request);
+ *     return result;
+ *   });
+ */
 
-import { verifyIncomingPayment, settleViaFacilitator, paymentRequiredResponse } from '@luna/blockchain';
+import {
+  verifyPayment,
+  settlePayment,
+  paymentRequiredResponse,
+} from '@luna/blockchain';
 import { buildIdempotencyKey, wasProcessed, markProcessed, getStoredResult, extractIdempotencyKey } from '@luna/blockchain';
 import { recordSuccess, recordFailure } from '@luna/blockchain';
-import type { ExactCasperPayload } from '@luna/blockchain';
+import type { PaymentInfo } from '@luna/blockchain';
 import type { LunaOperation } from '@luna/shared';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +28,7 @@ import type { LunaOperation } from '@luna/shared';
 // ---------------------------------------------------------------------------
 
 export interface X402Context {
-  payment: ExactCasperPayload;
+  payment: PaymentInfo;
   idempotencyKey: string;
   isRetry: boolean;
   previousResult: Record<string, unknown> | null;
@@ -31,10 +38,8 @@ export interface X402Context {
 // Handler types
 // ---------------------------------------------------------------------------
 
-/** Success: returns data to be merged into the 200 response */
 type X402Success = Record<string, unknown>;
 
-/** Error: returned as { error, code, details } with appropriate HTTP status */
 interface X402Error {
   error: string;
   code?: string;
@@ -56,7 +61,7 @@ function isError(result: X402Result): result is X402Error {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, PAYMENT-SIGNATURE, X-Idempotency-Key, X-User-Wallet',
+  'Access-Control-Allow-Headers': 'Content-Type, PAYMENT-SIGNATURE, X-Idempotency-Key, X-User-Wallet, x-402-amount, x-402-payment-intent, x-402-token, x-402-recipient, x-402-idempotency-key, x-402-expires-at',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -98,17 +103,17 @@ export function withX402Payment(
       );
     }
 
-    // Step 2: Payment verification
-    const payment = await verifyIncomingPayment(request, priceUSDC);
-    if (!payment.valid || !payment.payload) {
-      recordFailure(operation, payment.error || 'PAYMENT_REQUIRED');
+    // Step 2: Payment verification (supports Casper + Circle)
+    const paymentResult = await verifyPayment(request, priceUSDC);
+    if (!paymentResult.valid || !paymentResult.payment) {
+      recordFailure(operation, paymentResult.error || 'PAYMENT_REQUIRED');
       return paymentRequiredResponse(operation, priceUSDC);
     }
 
     try {
       // Step 3: Execute handler
       const context: X402Context = {
-        payment: payment.payload,
+        payment: paymentResult.payment,
         idempotencyKey,
         isRetry: false,
         previousResult: null,
@@ -125,8 +130,8 @@ export function withX402Payment(
         );
       }
 
-      // Step 4: Settle
-      const settlement = await settleViaFacilitator(payment.payload);
+      // Step 4: Settle on the appropriate chain
+      const settlement = await settlePayment(paymentResult.payment);
 
       // Step 5: Build response
       const response = {
@@ -136,15 +141,14 @@ export function withX402Payment(
         ...result,
         _payment: {
           amount: String(priceUSDC),
-          chain: 'casper-test',
+          chain: paymentResult.payment.chain,
           scheme: 'exact',
           transactionHash: settlement.transactionHash || '',
           settled: settlement.success,
         },
         _meta: {
           agent: 'luna',
-          network: 'casper:casper-test',
-          facilitator: 'cspr.cloud',
+          protocol: paymentResult.payment.protocol,
         },
       };
 

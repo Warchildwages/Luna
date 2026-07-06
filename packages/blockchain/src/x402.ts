@@ -1,15 +1,15 @@
-// 🏴 Pireph (June 30, 2026) — Luna Casper x402 Path
-// Pireph (July 1, 2026) — Added Ed25519 signature verification
-
-// Validates x402 payments on Casper. Uses types from the official SDK
-// for type safety but implements verification directly to avoid
-// webpack bundling issues with the SDK's Node-specific modules.
-//
-// Settlement goes through CSPR.cloud facilitator REST API.
-//
-// Constants reference:
-//   NETWORK_CASPER_TESTNET = "casper:casper-test"
-//   SCHEME_EXACT = "exact"
+/**
+ * 🏴 Pireph (July 6, 2026) — Luna Multi-Chain x402
+ *
+ * Verifies and settles x402 payments on multiple chains.
+ *
+ * Supported protocols:
+ *   PAYMENT-SIGNATURE  — Casper x402 (Ed25519 via tweetnacl + CSPR.cloud)
+ *   x-402-* headers    — Circle Gateway x402 (multi-chain: Base, Arc, etc.)
+ *
+ * Luna detects which protocol the caller is using from the request headers,
+ * validates accordingly, and routes settlement to the right facilitator.
+ */
 
 import nacl from 'tweetnacl';
 import { decodeHex } from './hex-utils';
@@ -21,14 +21,19 @@ import { decodeHex } from './hex-utils';
 export const NETWORK_CASPER_TESTNET = 'casper:casper-test';
 export const SCHEME_EXACT = 'exact';
 
+// Casper
 export const CASPER_NETWORK = process.env.CASPER_NETWORK || NETWORK_CASPER_TESTNET;
 export const CASPER_FACILITATOR_URL =
   process.env.CASPER_FACILITATOR_URL || 'https://x402-facilitator.cspr.cloud';
 export const CSPR_CLOUD_API_KEY = process.env.CSPR_CLOUD_API_KEY || '';
 export const LUNA_CASPER_WALLET = process.env.LUNA_CASPER_WALLET_ADDRESS || '';
 
+// Circle Gateway (multi-chain — Base, Arc, etc.)
+const CIRCLE_GATEWAY_BASE = process.env.CIRCLE_GATEWAY_BASE || 'https://api.circle.com/v1';
+const CIRCLE_API_KEY = process.env.CIRCLE_API_KEY || '';
+
 // ---------------------------------------------------------------------------
-// Types (mirror @make-software/casper-x402 types — avoids bundling SDK)
+// Casper Types
 // ---------------------------------------------------------------------------
 
 export interface ExactCasperAuthorization {
@@ -46,30 +51,94 @@ export interface ExactCasperPayload {
   authorization: ExactCasperAuthorization;
 }
 
+// ---------------------------------------------------------------------------
+// Circle Types
+// ---------------------------------------------------------------------------
+
+export interface CirclePaymentPayload {
+  'x-402-amount': string;
+  'x-402-payment-intent': string;
+  'x-402-token': 'USDC';
+  'x-402-recipient': string;
+  'x-402-idempotency-key': string;
+  'x-402-expires-at': string;
+}
+
+export interface CirclePaymentResult {
+  valid: boolean;
+  payload?: CirclePaymentPayload;
+  error?: string;
+  payer?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Unified Types
+// ---------------------------------------------------------------------------
+
+export type PaymentProtocol = 'casper' | 'circle';
+
+export interface PaymentInfo {
+  protocol: PaymentProtocol;
+  amount: string;
+  chain: string;
+  payer: string;
+  payee: string;
+  casperPayload?: ExactCasperPayload;
+  circlePayload?: CirclePaymentPayload;
+}
+
 export interface PaymentVerificationResult {
   valid: boolean;
-  payload?: ExactCasperPayload;
-  authorization?: ExactCasperAuthorization;
+  payment?: PaymentInfo;
   error?: string;
 }
 
+export interface SettlementResult {
+  success: boolean;
+  transactionHash?: string;
+  error?: string;
+  chain?: string;
+}
+
 // ---------------------------------------------------------------------------
-// Validation utils (replaces SDK imports that break webpack)
+// Protocol Detection
 // ---------------------------------------------------------------------------
 
-/** Validate a Casper address: 66 hex chars with "00" or "01" prefix */
-export function isValidAddress(address: string): boolean {
+/**
+ * Detect which x402 protocol a request is using.
+ */
+export function detectProtocol(headers: Headers): PaymentProtocol | null {
+  if (headers.get('PAYMENT-SIGNATURE') || headers.get('X-Casper-Payment')) {
+    return 'casper';
+  }
+  if (headers.get('x-402-amount') && headers.get('x-402-payment-intent')) {
+    return 'circle';
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Casper Address Validation
+// ---------------------------------------------------------------------------
+
+export function isValidCasperAddress(address: string): boolean {
   return /^(00|01)[0-9a-fA-F]{64}$/.test(address);
 }
 
-/** Parse a decimal USDC amount to atomic units (6 decimals) */
+export function isValidEthereumAddress(address: string): boolean {
+  return /^0x[0-9a-fA-F]{40}$/.test(address);
+}
+
+// ---------------------------------------------------------------------------
+// Amount Helpers
+// ---------------------------------------------------------------------------
+
 export function parseAmount(amount: string, decimals: number): bigint {
   const [whole = '0', fraction = ''] = amount.split('.');
   const padded = fraction.padEnd(decimals, '0').slice(0, decimals);
   return BigInt(whole + padded);
 }
 
-/** Format atomic units back to decimal USDC string */
 export function formatAmount(amount: bigint, decimals: number): string {
   const s = amount.toString().padStart(decimals + 1, '0');
   const intPart = s.slice(0, -decimals) || '0';
@@ -78,16 +147,10 @@ export function formatAmount(amount: bigint, decimals: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Ed25519 Signature Verification
+// Casper Ed25519 Verification
 // ---------------------------------------------------------------------------
 
-/**
- * Verify an Ed25519 signature over the authorization payload.
- * Uses tweetnacl (37KB, pure JS, zero Node dependencies).
- *
- * @returns true if signature is cryptographically valid
- */
-export function isValidSignature(payload: ExactCasperPayload): boolean {
+export function isValidCasperSignature(payload: ExactCasperPayload): boolean {
   try {
     const authBytes = new TextEncoder().encode(JSON.stringify(payload.authorization));
     const signature = decodeHex(payload.signature);
@@ -102,23 +165,42 @@ export function isValidSignature(payload: ExactCasperPayload): boolean {
 // Payment Verification
 // ---------------------------------------------------------------------------
 
-export async function verifyIncomingPayment(
+/**
+ * Verify an incoming payment from request headers.
+ * Detects the protocol and routes to the right verifier.
+ */
+export async function verifyPayment(
   request: Request,
   expectedAmountUSDC: number,
 ): Promise<PaymentVerificationResult> {
-  const paymentSignature = request.headers.get('PAYMENT-SIGNATURE');
+  const headers = request.headers;
+  const protocol = detectProtocol(headers);
 
-  if (!paymentSignature) {
-    return { valid: false, error: 'MISSING_PAYMENT_SIGNATURE_HEADER' };
+  if (!protocol) {
+    return { valid: false, error: 'MISSING_PAYMENT_HEADERS' };
   }
 
+  if (protocol === 'casper') {
+    return verifyCasperPayment(request, expectedAmountUSDC);
+  }
+
+  if (protocol === 'circle') {
+    return verifyCirclePayment(request, expectedAmountUSDC);
+  }
+
+  return { valid: false, error: 'UNSUPPORTED_PROTOCOL' };
+}
+
+// ── Casper verification (existing logic, refactored) ──────────────────────
+
+async function verifyCasperPayment(
+  request: Request,
+  expectedAmountUSDC: number,
+): Promise<PaymentVerificationResult> {
+  const raw = request.headers.get('PAYMENT-SIGNATURE') || request.headers.get('X-Casper-Payment') || '';
+
   try {
-    let payload: ExactCasperPayload;
-    try {
-      payload = JSON.parse(paymentSignature) as ExactCasperPayload;
-    } catch {
-      return { valid: false, error: 'INVALID_PAYLOAD_JSON' };
-    }
+    const payload = JSON.parse(raw) as ExactCasperPayload;
 
     if (!payload.signature || !payload.publicKey || !payload.authorization) {
       return { valid: false, error: 'MISSING_REQUIRED_FIELDS' };
@@ -126,15 +208,15 @@ export async function verifyIncomingPayment(
 
     const auth = payload.authorization;
 
-    if (!auth.from || !auth.to || !auth.value ||
+    if (!auth.from || !auth.to || auth.value === undefined ||
         auth.validAfter === undefined || auth.validBefore === undefined || !auth.nonce) {
       return { valid: false, error: 'INVALID_AUTHORIZATION_STRUCTURE' };
     }
 
-    if (!isValidAddress(auth.from)) {
+    if (!isValidCasperAddress(auth.from)) {
       return { valid: false, error: 'INVALID_PAYER_ADDRESS' };
     }
-    if (!isValidAddress(auth.to)) {
+    if (!isValidCasperAddress(auth.to)) {
       return { valid: false, error: 'INVALID_PAYEE_ADDRESS' };
     }
 
@@ -158,12 +240,21 @@ export async function verifyIncomingPayment(
       };
     }
 
-    // Step 5: Cryptographic signature verification
-    if (!isValidSignature(payload)) {
+    if (!isValidCasperSignature(payload)) {
       return { valid: false, error: 'INVALID_SIGNATURE' };
     }
 
-    return { valid: true, payload, authorization: auth };
+    return {
+      valid: true,
+      payment: {
+        protocol: 'casper',
+        amount: formatAmount(BigInt(auth.value), 6),
+        chain: CASPER_NETWORK,
+        payer: auth.from,
+        payee: auth.to,
+        casperPayload: payload,
+      },
+    };
   } catch (err) {
     return {
       valid: false,
@@ -172,13 +263,129 @@ export async function verifyIncomingPayment(
   }
 }
 
+// ── Circle Gateway verification (new — mirrors AllFans pattern) ───────────
+
+async function verifyCirclePayment(
+  request: Request,
+  expectedAmountUSDC: number,
+): Promise<PaymentVerificationResult> {
+  const h = (name: string) => request.headers.get(name) || '';
+
+  const circlePayload: CirclePaymentPayload = {
+    'x-402-amount': h('x-402-amount'),
+    'x-402-payment-intent': h('x-402-payment-intent'),
+    'x-402-token': 'USDC',
+    'x-402-recipient': h('x-402-recipient'),
+    'x-402-idempotency-key': h('x-402-idempotency-key'),
+    'x-402-expires-at': h('x-402-expires-at'),
+  };
+
+  // Validate required fields
+  if (!circlePayload['x-402-amount'] || !circlePayload['x-402-payment-intent'] ||
+      !circlePayload['x-402-recipient'] || !circlePayload['x-402-idempotency-key']) {
+    return { valid: false, error: 'MISSING_X402_HEADERS' };
+  }
+
+  // Validate recipient is a valid EVM address
+  if (!isValidEthereumAddress(circlePayload['x-402-recipient'])) {
+    return { valid: false, error: 'INVALID_RECIPIENT_ADDRESS' };
+  }
+
+  // Validate amount matches expected
+  const actualAmount = parseFloat(circlePayload['x-402-amount']);
+  if (actualAmount < expectedAmountUSDC) {
+    return {
+      valid: false,
+      error: `AMOUNT_BELOW_MINIMUM expected=${expectedAmountUSDC} got=${actualAmount}`,
+    };
+  }
+
+  // Validate expiration
+  const expiresAt = Number(circlePayload['x-402-expires-at']);
+  if (expiresAt && expiresAt < Date.now()) {
+    return { valid: false, error: 'PAYMENT_EXPIRED' };
+  }
+
+  // In mock mode, accept without Gateway verification
+  if (process.env.ALLFANS_MOCK_MODE === 'true') {
+    return {
+      valid: true,
+      payment: {
+        protocol: 'circle',
+        amount: circlePayload['x-402-amount'],
+        chain: 'base',
+        payer: circlePayload['x-402-recipient'],
+        payee: circlePayload['x-402-recipient'],
+        circlePayload,
+      },
+    };
+  }
+
+  // Production: verify via Circle Gateway
+  if (!CIRCLE_API_KEY) {
+    return { valid: false, error: 'CIRCLE_API_KEY_NOT_CONFIGURED' };
+  }
+
+  try {
+    const resp = await fetch(`${CIRCLE_GATEWAY_BASE}/x402/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CIRCLE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        paymentPayload: circlePayload,
+        paymentRequirements: {
+          network: 'eip155:8453', // Base
+          token: 'USDC',
+          amount: String(expectedAmountUSDC),
+        },
+      }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      return { valid: false, error: `CIRCLE_GATEWAY_ERROR: ${errText}` };
+    }
+
+    const data = await resp.json() as { payer?: string };
+    return {
+      valid: true,
+      payment: {
+        protocol: 'circle',
+        amount: circlePayload['x-402-amount'],
+        chain: 'base',
+        payer: data.payer || circlePayload['x-402-recipient'],
+        payee: circlePayload['x-402-recipient'],
+        circlePayload,
+      },
+    };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `CIRCLE_GATEWAY_UNREACHABLE: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Settlement via CSPR.cloud Facilitator
+// Settlement
 // ---------------------------------------------------------------------------
 
-export async function settleViaFacilitator(
-  payload: ExactCasperPayload,
-): Promise<{ success: boolean; transactionHash?: string; error?: string }> {
+/**
+ * Settle a verified payment — routes to the right facilitator based on protocol.
+ */
+export async function settlePayment(payment: PaymentInfo): Promise<SettlementResult> {
+  if (payment.protocol === 'casper' && payment.casperPayload) {
+    return settleCasper(payment.casperPayload);
+  }
+  if (payment.protocol === 'circle' && payment.circlePayload) {
+    return settleCircle(payment.circlePayload);
+  }
+  return { success: false, error: 'UNKNOWN_PROTOCOL' };
+}
+
+async function settleCasper(payload: ExactCasperPayload): Promise<SettlementResult> {
   try {
     const response = await fetch(`${CASPER_FACILITATOR_URL}/settle`, {
       method: 'POST',
@@ -198,15 +405,59 @@ export async function settleViaFacilitator(
       return { success: false, error: `Facilitator error: ${error}` };
     }
 
-    const result = await response.json();
+    const result = await response.json() as { transaction?: string; transactionHash?: string };
     return {
       success: true,
       transactionHash: result.transaction || result.transactionHash,
+      chain: CASPER_NETWORK,
     };
   } catch (err) {
     return {
       success: false,
       error: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+async function settleCircle(payload: CirclePaymentPayload): Promise<SettlementResult> {
+  // In mock mode, skip settlement
+  if (process.env.ALLFANS_MOCK_MODE === 'true') {
+    return {
+      success: true,
+      transactionHash: `mock-circle-${Date.now().toString(36)}`,
+      chain: 'base',
+    };
+  }
+
+  if (!CIRCLE_API_KEY) {
+    return { success: false, error: 'CIRCLE_API_KEY_NOT_CONFIGURED' };
+  }
+
+  try {
+    const resp = await fetch(`${CIRCLE_GATEWAY_BASE}/x402/settle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CIRCLE_API_KEY}`,
+      },
+      body: JSON.stringify({ paymentPayload: payload }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      return { success: false, error: `Circle settle error: ${errText}` };
+    }
+
+    const data = await resp.json() as { transaction?: string; transactionHash?: string };
+    return {
+      success: true,
+      transactionHash: data.transaction || data.transactionHash,
+      chain: 'base',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Circle Gateway unreachable: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 }
@@ -224,15 +475,26 @@ export function paymentRequiredResponse(
       error: 'Payment required',
       code: 'PAYMENT_REQUIRED',
       service: 'luna-v1',
-      details: `This operation requires ${priceUSDC} USDC via Casper x402.`,
+      details: `This operation requires ${priceUSDC} USDC.`,
       payment_required: {
-        network: CASPER_NETWORK,
-        facilitator: CASPER_FACILITATOR_URL,
-        recipient: LUNA_CASPER_WALLET,
-        scheme: SCHEME_EXACT,
-        asset: 'USDC (CEP-18)',
-        amount: String(priceUSDC),
-        operation,
+        casper: {
+          network: CASPER_NETWORK,
+          facilitator: CASPER_FACILITATOR_URL,
+          recipient: LUNA_CASPER_WALLET,
+          scheme: SCHEME_EXACT,
+          asset: 'USDC (CEP-18)',
+          amount: String(priceUSDC),
+          operation,
+          header: 'PAYMENT-SIGNATURE',
+        },
+        circle: {
+          network: 'eip155:8453', // Base
+          gateway: CIRCLE_GATEWAY_BASE,
+          token: 'USDC',
+          amount: String(priceUSDC),
+          operation,
+          headers: ['x-402-amount', 'x-402-payment-intent', 'x-402-token', 'x-402-recipient', 'x-402-idempotency-key', 'x-402-expires-at'],
+        },
       },
     }),
     {
@@ -241,8 +503,28 @@ export function paymentRequiredResponse(
         'Content-Type': 'application/json',
         'X-Payment-Required': 'true',
         'X-Service-Id': 'luna-v1',
-        'X-Network': CASPER_NETWORK,
       },
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Backward-compatible exports (for existing callers)
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use verifyPayment() — multi-chain */
+export async function verifyIncomingPayment(
+  request: Request,
+  expectedAmountUSDC: number,
+) {
+  const result = await verifyPayment(request, expectedAmountUSDC);
+  if (result.valid && result.payment?.casperPayload) {
+    return { valid: true, payload: result.payment.casperPayload, authorization: result.payment.casperPayload.authorization };
+  }
+  return { valid: false, error: result.error || 'PAYMENT_REQUIRED' };
+}
+
+/** @deprecated Use settlePayment() — multi-chain */
+export async function settleViaFacilitator(payload: ExactCasperPayload) {
+  return settleCasper(payload);
 }

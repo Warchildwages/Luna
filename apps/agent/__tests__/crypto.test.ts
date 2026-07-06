@@ -9,8 +9,8 @@ import nacl from 'tweetnacl';
 
 // Import from the blockchain package
 import {
-  isValidSignature,
-  isValidAddress,
+  isValidCasperSignature,
+  isValidCasperAddress,
   parseAmount,
   formatAmount,
   NETWORK_CASPER_TESTNET,
@@ -22,30 +22,30 @@ import { encodeHex, decodeHex } from '@luna/blockchain';
 describe('Casper Address Validation', () => {
   it('accepts valid 66-char Casper addresses with 00 prefix', () => {
     const valid = '00' + 'a'.repeat(64);
-    expect(isValidAddress(valid)).toBe(true);
+    expect(isValidCasperAddress(valid)).toBe(true);
   });
 
   it('accepts 01 prefix (ED25519)', () => {
     const valid = '01' + 'b'.repeat(64);
-    expect(isValidAddress(valid)).toBe(true);
+    expect(isValidCasperAddress(valid)).toBe(true);
   });
 
   it('rejects addresses without correct prefix', () => {
-    expect(isValidAddress('02' + 'c'.repeat(64))).toBe(false);
-    expect(isValidAddress('ff' + 'd'.repeat(64))).toBe(false);
+    expect(isValidCasperAddress('02' + 'c'.repeat(64))).toBe(false);
+    expect(isValidCasperAddress('ff' + 'd'.repeat(64))).toBe(false);
   });
 
   it('rejects wrong length', () => {
-    expect(isValidAddress('00' + 'a'.repeat(62))).toBe(false);
-    expect(isValidAddress('00' + 'a'.repeat(66))).toBe(false);
+    expect(isValidCasperAddress('00' + 'a'.repeat(62))).toBe(false);
+    expect(isValidCasperAddress('00' + 'a'.repeat(66))).toBe(false);
   });
 
   it('rejects non-hex characters', () => {
-    expect(isValidAddress('00' + 'z'.repeat(64))).toBe(false);
+    expect(isValidCasperAddress('00' + 'z'.repeat(64))).toBe(false);
   });
 
   it('rejects empty string', () => {
-    expect(isValidAddress('')).toBe(false);
+    expect(isValidCasperAddress('')).toBe(false);
   });
 });
 
@@ -101,7 +101,7 @@ describe('Ed25519 Signature Verification', () => {
       authorization: auth,
     };
 
-    expect(isValidSignature(payload)).toBe(true);
+    expect(isValidCasperSignature(payload)).toBe(true);
   });
 
   it('rejects a payload signed with a different key', () => {
@@ -127,7 +127,7 @@ describe('Ed25519 Signature Verification', () => {
       authorization: auth,
     };
 
-    expect(isValidSignature(payload)).toBe(false);
+    expect(isValidCasperSignature(payload)).toBe(false);
   });
 
   it('rejects a tampered authorization payload', () => {
@@ -155,12 +155,12 @@ describe('Ed25519 Signature Verification', () => {
       authorization: tamperedAuth, // Different value than what was signed
     };
 
-    expect(isValidSignature(payload)).toBe(false);
+    expect(isValidCasperSignature(payload)).toBe(false);
   });
 
   it('returns false for malformed payloads', () => {
-    expect(isValidSignature({} as never)).toBe(false);
-    expect(isValidSignature({ signature: '', publicKey: '', authorization: null } as never)).toBe(false);
+    expect(isValidCasperSignature({} as never)).toBe(false);
+    expect(isValidCasperSignature({ signature: '', publicKey: '', authorization: null } as never)).toBe(false);
   });
 });
 
