@@ -1,17 +1,19 @@
 # Luna 🌙 — Your Personal Event Agent
 
+**Casper Agentic Buildathon 2026 — Guest Agent**
+
 Autonomous event ticketing agent powered by AllFans. Discover events, buy tickets, transfer, check in, create events, manage gigs, and more — all via x402 micropayments on Casper.
 
-## Buildathon: Casper x402 + AllFans
+## Buildathon Submission
 
-Luna is a submission for the **Casper x402 Buildathon** (July 2026). She demonstrates:
+Luna is a **guest agent** in the Axium ecosystem. The main submission is **Vera 🛡️** (the trust authority with on-chain Casper attestations).
 
-- **x402 micropayments** — Pay per operation, no subscription, no pre-funding
-- **Ed25519 cryptographic verification** — Real signature verification via tweetnacl
-- **Cross-chain identity** — Dual-key attestation linking Casper Ed25519 key → Base EVM address
-- **did:nostr** — W3C Decentralized Identifier (v0.1.0, early adopter)
-- **ERC-8004** — EVM agent identity registry
-- **17 operations** — Full event lifecycle: buyer, creator, venue, social, secondary market
+Three-agent architecture:
+- **Vera 🛡️** — Trust authority with on-chain attestations on Casper Testnet **(MAIN)**
+- **Luna 🌙** — Event ticketing agent (this repo)
+- **Sigil 🦅** — Legal/notary agent
+
+Vera verifies both Luna and Sigil, evaluates their capabilities, and records attestations on-chain via the AgentAttest Odra contract. See [Vera's README](https://github.com/Warchildwages/Vera) for the full buildathon submission details.
 
 ## Quick Start
 
