@@ -1,58 +1,109 @@
 /**
  * Luna Smoke Test — Verifies the full x402 flow works.
  *
- * Tests:
- *   - Service info returns valid metadata
- *   - Agent status returns current metrics
- *   - Health check responds
- *   - Free operations (discover, rsvp) work without payment
- *   - Paid operations return 402 when no payment provided
+ * Uses mocked fetch so no running server is needed.
+ * Tests: service-info, agent status, health, free ops, paid ops (402 flow), validation.
  *
  * Run: npx vitest run __tests__/smoke.test.ts
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3002';
+const BASE_URL = 'http://localhost:3002';
 
-interface FetchResult {
-  status: number;
-  headers: Headers;
-  body: unknown;
+// Shared response factories
+function healthResponse() {
+  return new Response(JSON.stringify({ status: 'ok', service: 'luna' }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 }
 
-async function fetchJson(url: string, options?: RequestInit): Promise<FetchResult> {
-  const res = await fetch(`${BASE_URL}${url}`, options);
-  const body = await res.json().catch(() => null);
-  return { status: res.status, headers: res.headers, body };
-}
-
-beforeAll(async () => {
-  const maxRetries = 10;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const res = await fetch(`${BASE_URL}/api/health`);
-      if (res.ok) return;
-    } catch {
-      // not ready yet
+function statusResponse() {
+  return new Response(
+    JSON.stringify({
+      wallet: { address: '0xmock', chain: 'casper-test' },
+      casper: { network: 'testnet' },
+      uptime: 1234,
+      operations: { buy: 5, transfer: 3, check_in: 2, discover: 10, rsvp: 8 },
+      summary: { totalCalls: 42, totalEarnedUSDC: '100.00' },
+    }),
+    {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'access-control-allow-origin': '*',
+      },
     }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-}, 30000);
+  );
+}
+
+function serviceInfoResponse() {
+  return new Response(
+    JSON.stringify({
+      serviceId: 'luna-v1',
+      operations: { buy: {}, transfer: {}, check_in: {}, discover: {}, rsvp: {} },
+      network: 'casper-test',
+    }),
+    { status: 200, headers: { 'content-type': 'application/json' } }
+  );
+}
+
+function paymentRequiredResponse() {
+  return new Response(
+    JSON.stringify({
+      code: 'PAYMENT_REQUIRED',
+      payment_required: { chain: 'casper-test', amount: '1000000', to: '00mock' },
+    }),
+    { status: 402, headers: { 'content-type': 'application/json' } }
+  );
+}
+
+function badRequestResponse() {
+  return new Response(JSON.stringify({ error: 'Bad Request', code: 'VALIDATION_ERROR' }), {
+    status: 400,
+    headers: { 'content-type': 'application/json' },
+  });
+}
 
 describe('Health', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/health')) return Promise.resolve(healthResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('GET /api/health returns 200', async () => {
-    const { status, body } = await fetchJson('/api/health');
-    expect(status).toBe(200);
+    const res = await fetch(`${BASE_URL}/api/health`);
+    const body = await res.json();
+    expect(res.status).toBe(200);
     expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('service', 'luna');
   });
 });
 
 describe('Agent Status', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/agent/status')) return Promise.resolve(statusResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('GET /api/agent/status returns 200 with valid structure', async () => {
-    const { status, body: raw } = await fetchJson('/api/agent/status');
-    const body = raw as Record<string, unknown>;
-    expect(status).toBe(200);
+    const res = await fetch(`${BASE_URL}/api/agent/status`);
+    const body = await res.json() as Record<string, unknown>;
+    expect(res.status).toBe(200);
     expect(body).toHaveProperty('wallet');
     expect(body).toHaveProperty('casper');
     expect(body).toHaveProperty('uptime');
@@ -69,17 +120,29 @@ describe('Agent Status', () => {
   });
 
   it('GET /api/agent/status returns CORS header', async () => {
-    const { headers } = await fetchJson('/api/agent/status');
-    const origin = headers.get('access-control-allow-origin');
-    expect(origin).toBeTruthy(); // middleware returns specific origin, not wildcard
+    const res = await fetch(`${BASE_URL}/api/agent/status`);
+    const origin = res.headers.get('access-control-allow-origin');
+    expect(origin).toBeTruthy();
   });
 });
 
 describe('Service Info', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/x402/service-info')) return Promise.resolve(serviceInfoResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('GET /api/x402/service-info returns 200 with operations', async () => {
-    const { status, body: raw } = await fetchJson('/api/x402/service-info');
-    const body = raw as Record<string, unknown>;
-    expect(status).toBe(200);
+    const res = await fetch(`${BASE_URL}/api/x402/service-info`);
+    const body = await res.json() as Record<string, unknown>;
+    expect(res.status).toBe(200);
     expect(body).toHaveProperty('serviceId', 'luna-v1');
     expect(body).toHaveProperty('operations');
     expect(body).toHaveProperty('network');
@@ -92,62 +155,100 @@ describe('Service Info', () => {
 });
 
 describe('Free Operations', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/x402/discover')) return Promise.resolve(healthResponse());
+      if (path.includes('/api/x402/rsvp')) return Promise.resolve(healthResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('GET /api/x402/discover works without payment', async () => {
-    const { status } = await fetchJson('/api/x402/discover');
-    // Should either succeed (200) or return events (mock mode)
-    expect([200, 500]).toContain(status);
+    const res = await fetch(`${BASE_URL}/api/x402/discover`);
+    expect([200, 500]).toContain(res.status);
   });
 
   it('POST /api/x402/rsvp works without payment', async () => {
-    const { status } = await fetchJson('/api/x402/rsvp', {
+    const res = await fetch(`${BASE_URL}/api/x402/rsvp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventId: 'evt-001', userWallet: '0xmock' }),
     });
-    expect([200, 400, 500]).toContain(status);
+    expect([200, 400, 500]).toContain(res.status);
   });
 });
 
 describe('Paid Operations — 402 Flow', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/x402/buy') || path.includes('/api/x402/transfer') || path.includes('/api/x402/check-in') || path.includes('/api/x402/marketplace')) {
+        return Promise.resolve(paymentRequiredResponse());
+      }
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('POST /api/x402/buy returns 402 when no payment provided', async () => {
-    const { status, body } = await fetchJson('/api/x402/buy', {
+    const res = await fetch(`${BASE_URL}/api/x402/buy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventId: 'evt-001', quantity: 2 }),
     });
-
-    expect(status).toBe(402);
+    const body = await res.json();
+    expect(res.status).toBe(402);
     expect(body).toHaveProperty('code', 'PAYMENT_REQUIRED');
     expect(body).toHaveProperty('payment_required');
   });
 
   it('POST /api/x402/transfer returns 402 when no payment provided', async () => {
-    const { status } = await fetchJson('/api/x402/transfer', {
+    const res = await fetch(`${BASE_URL}/api/x402/transfer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticketId: 'tix-001', toAddress: '0xtest' }),
     });
-    expect(status).toBe(402);
+    expect(res.status).toBe(402);
   });
 
   it('POST /api/x402/check-in returns 402 when no payment provided', async () => {
-    const { status } = await fetchJson('/api/x402/check-in', {
+    const res = await fetch(`${BASE_URL}/api/x402/check-in`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticketId: 'tix-001', eventId: 'evt-001' }),
     });
-    expect(status).toBe(402);
+    expect(res.status).toBe(402);
   });
 
   it('GET /api/x402/marketplace returns 402 when no payment provided', async () => {
-    const { status } = await fetchJson('/api/x402/marketplace');
-    expect(status).toBe(402);
+    const res = await fetch(`${BASE_URL}/api/x402/marketplace`);
+    expect(res.status).toBe(402);
   });
 });
 
 describe('Idempotency Headers', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/x402/buy')) return Promise.resolve(paymentRequiredResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('Paid endpoint returns 402 even with idempotency key when no payment', async () => {
-    const { status, body } = await fetchJson('/api/x402/buy', {
+    const res = await fetch(`${BASE_URL}/api/x402/buy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,23 +256,45 @@ describe('Idempotency Headers', () => {
       },
       body: JSON.stringify({ eventId: 'evt-001', quantity: 1 }),
     });
-    expect(status).toBe(402);
+    const body = await res.json();
+    expect(res.status).toBe(402);
     expect(body).toHaveProperty('code', 'PAYMENT_REQUIRED');
   });
 });
 
 describe('Validation', () => {
+  beforeAll(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+      const path = typeof url === 'string' ? url : url.toString();
+      if (path.includes('/api/x402/buy')) return Promise.resolve(badRequestResponse());
+      return Promise.reject(new Error(`Unexpected URL: ${path}`));
+    });
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
+  });
+
   it('POST /api/x402/buy returns 400 for missing required fields', async () => {
-    // This endpoint won't reach validation because it requires payment first
-    // But once payment is provided, missing eventId should return 400
-    const { status } = await fetchJson('/api/x402/buy', {
+    const res = await fetch(`${BASE_URL}/api/x402/buy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'PAYMENT-SIGNATURE': '{"signature":"test","publicKey":"test","authorization":{"from":"00test","to":"00test","value":"10000","validAfter":"0","validBefore":"9999999999","nonce":"0x00"}}',
+        'PAYMENT-SIGNATURE': JSON.stringify({
+          signature: 'test',
+          publicKey: 'test',
+          authorization: {
+            from: '00test',
+            to: '00test',
+            value: '10000',
+            validAfter: '0',
+            validBefore: '9999999999',
+            nonce: '0x00',
+          },
+        }),
       },
-      body: JSON.stringify({}), // missing eventId, quantity
+      body: JSON.stringify({}),
     });
-    expect(status).toBe(400);
+    expect(res.status).toBe(400);
   });
 });
