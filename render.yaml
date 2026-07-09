@@ -8,7 +8,7 @@ services:
     runtime: node
     repo: https://github.com/Warchildwages/Luna
     branch: main
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    buildCommand: npx pnpm install --frozen-lockfile && npx pnpm build
     startCommand: cd apps/agent && cp -r .next/static .next/standalone/.next/static 2>/dev/null; node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
