@@ -1,4 +1,3 @@
-import type { Request } from 'express'; // unused
 import { withX402Payment, handleOptions } from '@/lib/x402-middleware';
 import { LUNA_PRICING } from '@luna/shared';
 import { manageGigSchema } from '@luna/shared';

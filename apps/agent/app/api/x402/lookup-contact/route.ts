@@ -1,4 +1,4 @@
-import type { NextResponse } from 'next/server'; // unused
+import { NextResponse } from "next/server"; // unused
 import { lookupContactSchema } from '@luna/shared';
 
 export async function POST(request: Request) {

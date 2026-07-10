@@ -7,19 +7,82 @@
    Creating an optimized production build ...
  ✓ Compiled successfully
    Linting and checking validity of types ...
-Failed to compile.
+   Collecting page data ...
+   Generating static pages (0/30) ...
+   Generating static pages (7/30) 
+   Generating static pages (14/30) 
+   Generating static pages (22/30) 
+ ✓ Generating static pages (30/30)
+   Finalizing page optimization ...
+   Collecting build traces ...
+ ⚠ Failed to copy traced files for C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\server\pages\_app.js Error: EPERM: operation not permitted, symlink 'C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\react@18.3.1\node_modules\react' -> 'C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\standalone\apps\agent\node_modules\react'
+    at async Object.symlink (node:internal/fs/promises:1005:10)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1402:25
+    at async Promise.all (index 9)
+    at async handleTraceFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1390:9)
+    at async copyTracedFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1451:9)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:224:9
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20)
+    at async writeStandaloneDirectory (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:223:5)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:2143:17
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'symlink',
+  path: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\node_modules\\.pnpm\\react@18.3.1\\node_modules\\react',
+  dest: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\apps\\agent\\.next\\standalone\\apps\\agent\\node_modules\\react'
+}
+ ⚠ Failed to copy traced files for C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\server\pages\_error.js Error: EPERM: operation not permitted, symlink 'C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\react@18.3.1\node_modules\react' -> 'C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\standalone\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\react'
+    at async Object.symlink (node:internal/fs/promises:1005:10)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1402:25
+    at async Promise.all (index 13)
+    at async handleTraceFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1390:9)
+    at async copyTracedFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1451:9)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:224:9
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20)
+    at async writeStandaloneDirectory (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:223:5)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:2143:17
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'symlink',
+  path: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\node_modules\\.pnpm\\react@18.3.1\\node_modules\\react',
+  dest: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\apps\\agent\\.next\\standalone\\node_modules\\.pnpm\\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\react'
+}
+ ⚠ Failed to copy traced files for C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\server\pages\_document.js Error: EPERM: operation not permitted, symlink 'C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next' -> 'C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\standalone\apps\agent\node_modules\next'
+    at async Object.symlink (node:internal/fs/promises:1005:10)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1402:25
+    at async Promise.all (index 37)
+    at async handleTraceFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1390:9)
+    at async copyTracedFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1451:9)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:224:9
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20)
+    at async writeStandaloneDirectory (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:223:5)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:2143:17
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'symlink',
+  path: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\node_modules\\.pnpm\\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\next',
+  dest: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\apps\\agent\\.next\\standalone\\apps\\agent\\node_modules\\next'
+}
 
-./app/api/x402/buy-merch/route.ts:9:3
-Type error: Argument of type '(request: NextRequest, context: X402Context) => Promise<{ error: string; code: string; details: { eventId?: string[] | undefined; quantity?: string[] | undefined; itemId?: string[] | undefined; size?: string[] | undefined; }; ... 5 more ...; status?: undefined; } | { ...; }>' is not assignable to parameter of type 'X402Handler'.
-  Types of parameters 'request' and 'request' are incompatible.
-    Type 'Request' is missing the following properties from type 'NextRequest': cookies, geo, ip, nextUrl, and 3 more.
-
-[0m [90m  7 |[39m   [32m'buy_merch'[39m[33m,[39m[0m
-[0m [90m  8 |[39m   [33mLUNA_PRICING[39m[33m.[39mbuy_merch[33m,[39m[0m
-[0m[31m[1m>[22m[39m[90m  9 |[39m   [36masync[39m (request[33m:[39m [33mNextRequest[39m[33m,[39m context) [33m=>[39m {[0m
-[0m [90m    |[39m   [31m[1m^[22m[39m[0m
-[0m [90m 10 |[39m     [36mconst[39m body [33m=[39m [36mawait[39m request[33m.[39mjson()[33m.[39m[36mcatch[39m(() [33m=>[39m ({}))[33m;[39m[0m
-[0m [90m 11 |[39m     [36mconst[39m parsed [33m=[39m buyMerchSchema[33m.[39msafeParse(body)[33m;[39m[0m
-[0m [90m 12 |[39m     [36mif[39m ([33m![39mparsed[33m.[39msuccess) {[0m
-Next.js build worker exited with code: 1 and signal: null
+> Build error occurred
+Error: EPERM: operation not permitted, symlink 'C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\@next+env@14.2.35\node_modules\@next\env' -> 'C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent\.next\standalone\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\@next\env'
+    at async Object.symlink (node:internal/fs/promises:1005:10)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1402:25
+    at async Promise.all (index 86)
+    at async handleTraceFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1390:9)
+    at async copyTracedFiles (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\utils.js:1472:5)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:224:9
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20)
+    at async writeStandaloneDirectory (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:223:5)
+    at async C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\build\index.js:2143:17
+    at async Span.traceAsyncFn (C:\Users\Jones\Documents\WarchildDev\Luna\node_modules\.pnpm\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\node_modules\next\dist\trace\trace.js:154:20) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'symlink',
+  path: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\node_modules\\.pnpm\\@next+env@14.2.35\\node_modules\\@next\\env',
+  dest: 'C:\\Users\\Jones\\Documents\\WarchildDev\\Luna\\apps\\agent\\.next\\standalone\\node_modules\\.pnpm\\next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1\\node_modules\\@next\\env'
+}
  ELIFECYCLE  Command failed with exit code 1.
