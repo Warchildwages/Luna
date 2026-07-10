@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: luna-agent
+    runtime: node
+    repo: https://github.com/Warchildwages/Luna
+    branch: main
+    buildCommand: NODE_ENV=development npx pnpm install --frozen-lockfile && npx pnpm build
+    startCommand: cd apps/agent && cp -r .next/static .next/standalone/.next/static 2>/dev/null; cd .next/standalone && node apps/agent/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: ALLFANS_MOCK_MODE
+        value: "true"
+      - key: ALLFANS_API_URL
+        sync: false
+      - key: VENICE_API_KEY
+        sync: false
+      - key: LUNA_CASPER_WALLET_ADDRESS
+        sync: false
+      - key: CSPR_CLOUD_API_KEY
+        sync: false
+      - key: LUNA_EVM_PRIVATE_KEY
+        sync: false
+      - key: ERC8004_IDENTITY_REGISTRY
+        sync: false
+      - key: LUNA_EVM_WALLET
+        sync: false
+      - key: CASPER_MCP_SERVER_URL
+        sync: false
+    healthCheckPath: /api/health
