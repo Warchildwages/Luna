@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@luna/shared": "workspace:*",
-    "tweetnacl": "^1.0.3"
-  }
+      "@luna/shared": "workspace:*",
+      "tweetnacl": "^1.0.3",
+      "viem": "^2.55.0"
+    }
 }
