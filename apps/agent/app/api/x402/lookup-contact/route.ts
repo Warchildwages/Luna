@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextResponse } from 'next/server'; // unused
 import { lookupContactSchema } from '@luna/shared';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const parsed = lookupContactSchema.safeParse(body);
   if (!parsed.success) {

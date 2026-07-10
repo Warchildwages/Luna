@@ -2,3 +2,6 @@
 > @luna/agent@0.1.0 typecheck C:\Users\Jones\Documents\WarchildDev\Luna\apps\agent
 > tsc --noEmit
 
+__tests__/crypto.test.ts(12,3): error TS2305: Module '"@luna/blockchain"' has no exported member 'isValidSignature'.
+__tests__/crypto.test.ts(13,3): error TS2305: Module '"@luna/blockchain"' has no exported member 'isValidAddress'.
+ ELIFECYCLE  Command failed with exit code 2.

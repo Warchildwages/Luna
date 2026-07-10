@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import type { Request } from 'express'; // unused
 import { withX402Payment, handleOptions } from '@/lib/x402-middleware';
 import { LUNA_PRICING } from '@luna/shared';
 import { createEventSchema } from '@luna/shared';
@@ -6,7 +6,7 @@ import { createEventSchema } from '@luna/shared';
 export const POST = withX402Payment(
   'create_event',
   LUNA_PRICING.create_event,
-  async (request: NextRequest, context) => {
+  async (request: Request, context) => {
     const body = await request.json().catch(() => ({}));
     const parsed = createEventSchema.safeParse(body);
     if (!parsed.success) {

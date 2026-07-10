@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import type { Request } from 'express'; // unused
 import { withX402Payment, handleOptions } from '@/lib/x402-middleware';
 import { LUNA_PRICING } from '@luna/shared';
 import { manageCapacitySchema } from '@luna/shared';
@@ -6,7 +6,7 @@ import { manageCapacitySchema } from '@luna/shared';
 export const POST = withX402Payment(
   'manage_capacity',
   LUNA_PRICING.manage_capacity,
-  async (request: NextRequest, context) => {
+  async (request: Request, context) => {
     const body = await request.json().catch(() => ({}));
     const parsed = manageCapacitySchema.safeParse(body);
     if (!parsed.success) {
